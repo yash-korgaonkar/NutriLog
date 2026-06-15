@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#7c6af7" />
+  <meta name="description" content="NutriLog — AI-powered nutrition tracker. Log meals with natural language, powered by Gemini 2.5 Flash." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NutriLog" />
+  <title>NutriLog — AI Nutrition Tracker</title>
+
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/assets/icon-192.png" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <link rel="stylesheet" href="/styles/main.css" />
+
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ── SVG Icon helpers ── */
+    .icon-svg { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .icon-svg svg { display:block; }
+
+    /* Meal type icon backgrounds */
+    .meal-icon.breakfast { background: rgba(251,146,60,0.15); color:#fb923c; }
+    .meal-icon.lunch     { background: rgba(74,222,128,0.15);  color:#4ade80; }
+    .meal-icon.dinner    { background: rgba(124,106,247,0.15); color:#7c6af7; }
+    .meal-icon.snack     { background: rgba(251,191,36,0.15);  color:#fbbf24; }
+
+    /* Logo mark */
+    .logo-mark {
+      width:80px; height:80px;
+      background: linear-gradient(135deg, var(--accent), #9b6ef3);
+      border-radius:22px;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow: var(--shadow-accent);
+      color:#fff;
+    }
+    .logo-mark-sm {
+      width:42px; height:42px;
+      background: linear-gradient(135deg, var(--accent), #9b6ef3);
+      border-radius:12px;
+      display:flex; align-items:center; justify-content:center;
+      color:#fff;
+    }
+    /* Loading pulse */
+    .loading-logo {
+      animation: pulse 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     SVG Icon Sprite (inline, referenced by <use>)
+═══════════════════════════════════════════════════ -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="icon-leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 20A7 7 0 0 1 4 13V6a1 1 0 0 1 1-1c3.87 0 7 3.13 7 7v8z"/>
+    <path d="M13 20a7 7 0 0 0 7-7V6a1 1 0 0 0-1-1c-3.87 0-7 3.13-7 7v8z"/>
+  </symbol>
+
+  <!-- Nav icons -->
+  <symbol id="icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+  </symbol>
+  <symbol id="icon-plus-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+  </symbol>
+  <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+  </symbol>
+  <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  </symbol>
+  <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </symbol>
+
+  <!-- UI icons -->
+  <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9 12 15 18 9"/>
+  </symbol>
+  <symbol id="icon-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+  </symbol>
+  <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+  </symbol>
+  <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </symbol>
+  <symbol id="icon-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+  </symbol>
+  <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+  </symbol>
+  <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+  </symbol>
+  <symbol id="icon-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3v19"/><path d="M5 8l7-5 7 5"/><path d="M5 21h14"/><path d="M5 8H2l3 6"/><path d="M19 8h3l-3 6"/>
+  </symbol>
+  <symbol id="icon-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="11"/>
+    <path d="M7 4h10l-1 7a5 5 0 0 1-8 0L7 4z"/><path d="M3 4h4M17 4h4"/>
+  </symbol>
+  <symbol id="icon-trending-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+  </symbol>
+  <symbol id="icon-utensils" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>
+  </symbol>
+  <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </symbol>
+  <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </symbol>
+  <symbol id="icon-sunrise" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/>
+    <line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/>
+    <line x1="23" y1="22" x2="1" y2="22"/><polyline points="8 6 12 2 16 6"/>
+  </symbol>
+  <symbol id="icon-apple" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 20.94c1.5 0 2.75-1.06 4-1.06 3 0 6 2 6 2s-2 -8-6-8c-1.25 0-2.5 1.06-4 1.06s-2.75-1.06-4-1.06c-4 0-6 8-6 8s3-2 6-2c1.25 0 2.5-1.06 4-1.06z"/>
+    <path d="M10 2c0 2.5 2 4 4 2"/>
+  </symbol>
+  <symbol id="icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+  </symbol>
+  <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </symbol>
+  <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </symbol>
+  <symbol id="icon-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+  </symbol>
+  <symbol id="icon-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+  </symbol>
+</svg>
+
+<!-- ═══════════════════════════════════════════════════
+     Loading Overlay
+═══════════════════════════════════════════════════ -->
+<div id="loading-overlay">
+  <div class="logo-mark loading-logo">
+    <svg width="42" height="42"><use href="#icon-leaf"/></svg>
+  </div>
+  <div style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--text-primary)">NutriLog</div>
+  <div class="spinner"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     Setup / Onboarding Screen
+═══════════════════════════════════════════════════ -->
+<div id="setup-screen" style="display:none">
+  <div class="setup-logo">
+    <div class="logo-mark" style="margin:0 auto 16px">
+      <svg width="42" height="42"><use href="#icon-leaf"/></svg>
+    </div>
+    <h1>NutriLog</h1>
+    <p>AI-powered nutrition, built for you.</p>
+  </div>
+
+  <form id="setup-form" class="setup-steps">
+
+    <!-- Personal Info -->
+    <div class="form-row">
+      <div class="input-group">
+        <label>Height (cm)</label>
+        <input id="setup-height" type="number" class="input" placeholder="175" min="100" max="250" required />
+      </div>
+      <div class="input-group">
+        <label>Weight</label>
+        <input id="setup-weight" type="number" class="input" placeholder="165" min="50" max="700" required />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="input-group">
+        <label>Age</label>
+        <input id="setup-age" type="number" class="input" placeholder="25" min="10" max="100" required />
+      </div>
+      <div class="input-group">
+        <label>Sex</label>
+        <select id="setup-sex" class="input select">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>Activity Level</label>
+      <select id="setup-activity" class="input select">
+        <option value="sedentary">Sedentary (desk job, little exercise)</option>
+        <option value="light">Lightly Active (1–3 days/week)</option>
+        <option value="moderate" selected>Moderately Active (3–5 days/week)</option>
+        <option value="active">Very Active (6–7 days/week)</option>
+        <option value="very-active">Extra Active (physical job + gym)</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="input-group">
+        <label>Goal</label>
+        <select id="setup-goal" class="input select">
+          <option value="cut">Lose Weight (Cut)</option>
+          <option value="maintain" selected>Maintain Weight</option>
+          <option value="bulk">Gain Muscle (Bulk)</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Units</label>
+        <select id="setup-unit" class="input select">
+          <option value="lbs" selected>Imperial (lbs)</option>
+          <option value="kg">Metric (kg)</option>
+        </select>
+      </div>
+    </div>
+
+    <button type="submit" id="btn-setup-submit" class="btn btn-primary btn-full" style="margin-top:8px">
+      Get Started
+      <svg width="18" height="18"><use href="#icon-arrow-right"/></svg>
+    </button>
+  </form>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     Main App Shell
+═══════════════════════════════════════════════════ -->
+<div id="main-app" style="display:none;flex:1;flex-direction:column;position:relative">
+
+  <!-- ── SCREEN: Home / Dashboard ── -->
+  <div id="screen-home" class="screen">
+    <div class="screen-header">
+      <h1>Today's Log</h1>
+      <div class="subtitle" id="dash-date"></div>
+    </div>
+    <div class="screen-content">
+
+      <!-- Calorie Ring -->
+      <div class="card" style="padding:24px 20px">
+        <div id="calorie-ring-wrapper">
+          <canvas id="calorie-ring" width="200" height="200"></canvas>
+          <div id="calorie-ring-center">
+            <div class="cal-num" id="calorie-ring-num">0</div>
+            <div class="cal-label">kcal eaten</div>
+            <div class="cal-remaining" id="calorie-ring-remaining">— remaining</div>
+          </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-row" style="margin-top:24px">
+          <div class="stat-chip">
+            <div class="val" id="dash-goal-cal">—</div>
+            <div class="lbl">Goal</div>
+          </div>
+          <div class="stat-chip">
+            <div class="val" id="dash-burned-cal">—</div>
+            <div class="lbl">Burned</div>
+          </div>
+          <div class="stat-chip">
+            <div class="val" id="dash-net-cal">—</div>
+            <div class="lbl">Eaten</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Macro Bars -->
+      <div class="card" style="margin-top:12px">
+        <div class="section-title">Macros</div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <!-- Protein -->
+          <div>
+            <div class="flex-between mb-8">
+              <span style="font-size:13px;font-weight:600;color:var(--blue);display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--blue);display:inline-block"></span>
+                Protein
+              </span>
+              <span class="text-sm text-muted" id="bar-protein-label">0g / 0g</span>
+            </div>
+            <div class="progress-bar-track"><div class="progress-bar-fill protein" id="bar-protein" style="width:0%"></div></div>
+          </div>
+          <!-- Carbs -->
+          <div>
+            <div class="flex-between mb-8">
+              <span style="font-size:13px;font-weight:600;color:var(--yellow);display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--yellow);display:inline-block"></span>
+                Carbs
+              </span>
+              <span class="text-sm text-muted" id="bar-carbs-label">0g / 0g</span>
+            </div>
+            <div class="progress-bar-track"><div class="progress-bar-fill carbs" id="bar-carbs" style="width:0%"></div></div>
+          </div>
+          <!-- Fat -->
+          <div>
+            <div class="flex-between mb-8">
+              <span style="font-size:13px;font-weight:600;color:var(--red);display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>
+                Fat
+              </span>
+              <span class="text-sm text-muted" id="bar-fat-label">0g / 0g</span>
+            </div>
+            <div class="progress-bar-track"><div class="progress-bar-fill fat" id="bar-fat" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Meals -->
+      <div class="section-title">Meals</div>
+      <div id="dash-meals"></div>
+
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Log Meal ── -->
+  <div id="screen-log" class="screen">
+    <div class="screen-header">
+      <h1>Log Meal</h1>
+      <div class="subtitle">Describe anything — AI does the rest</div>
+    </div>
+    <div class="screen-content">
+
+      <!-- Input Section -->
+      <div id="log-input-section">
+        <div class="input-group">
+          <label>What did you eat?</label>
+          <textarea id="log-meal-text" class="input" rows="4"
+            placeholder="e.g. Two scrambled eggs, two slices of whole wheat toast with butter, and a glass of OJ"></textarea>
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="section-title">Meal Type</div>
+          <div class="toggle-group" id="log-meal-type">
+            <div class="toggle-option" data-type="breakfast">
+              <svg width="14" height="14" style="margin-right:4px;vertical-align:-2px"><use href="#icon-sunrise"/></svg>
+              Breakfast
+            </div>
+            <div class="toggle-option" data-type="lunch">
+              <svg width="14" height="14" style="margin-right:4px;vertical-align:-2px"><use href="#icon-sun"/></svg>
+              Lunch
+            </div>
+            <div class="toggle-option" data-type="dinner">
+              <svg width="14" height="14" style="margin-right:4px;vertical-align:-2px"><use href="#icon-moon"/></svg>
+              Dinner
+            </div>
+            <div class="toggle-option" data-type="snack">
+              <svg width="14" height="14" style="margin-right:4px;vertical-align:-2px"><use href="#icon-apple"/></svg>
+              Snack
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-analyze" class="btn btn-primary btn-full" style="margin-top:20px">
+          <svg width="18" height="18"><use href="#icon-sparkles"/></svg>
+          Analyze with Gemini
+        </button>
+
+        <!-- Spinner -->
+        <div id="log-spinner" class="spinner-wrap hidden">
+          <div class="spinner"></div>
+          <div class="spinner-text">Gemini is analyzing your meal…<br><span style="font-size:12px;opacity:0.6">Usually takes 2–4 seconds</span></div>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div id="log-results-section" class="hidden">
+        <div class="flex-between mb-12">
+          <div style="font-size:16px;font-weight:700">Analysis Results</div>
+          <button id="btn-reanalyze" class="btn btn-ghost btn-sm">
+            <svg width="14" height="14" style="margin-right:4px;vertical-align:-2px"><use href="#icon-refresh"/></svg>
+            Re-analyze
+          </button>
+        </div>
+
+        <div id="log-foods-container"></div>
+
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div class="text-sm text-muted mb-12" style="display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" style="color:var(--text-muted)"><use href="#icon-edit"/></svg>
+            Tap any number to edit if Gemini was off
+          </div>
+          <button id="btn-save-meal" class="btn btn-primary btn-full">
+            <svg width="18" height="18"><use href="#icon-check"/></svg>
+            Confirm &amp; Save Meal
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SCREEN: History ── -->
+  <div id="screen-history" class="screen">
+    <div class="screen-header">
+      <h1>History</h1>
+      <div class="subtitle">Your past 5 weeks</div>
+    </div>
+    <div class="screen-content">
+      <!-- Heatmap -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="section-title" style="margin-top:0">Calorie Goal Completion</div>
+        <div id="heatmap-grid" class="heatmap-grid"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:10px">
+          <span class="text-xs text-muted">Less</span>
+          <div style="width:14px;height:14px;border-radius:3px;background:var(--bg-glass);border:1px solid var(--border)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:rgba(124,106,247,0.2)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:rgba(124,106,247,0.4)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:rgba(124,106,247,0.65)"></div>
+          <div style="width:14px;height:14px;border-radius:3px;background:var(--accent)"></div>
+          <span class="text-xs text-muted">More</span>
+        </div>
+      </div>
+
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Insights ── -->
+  <div id="screen-insights" class="screen">
+    <div class="screen-header">
+      <h1>Insights</h1>
+      <div class="subtitle">Last 7 days overview</div>
+    </div>
+    <div class="screen-content">
+
+      <!-- Weekly calories -->
+      <div class="card">
+        <div class="section-title" style="margin-top:0">Weekly Calories</div>
+        <div class="chart-wrapper">
+          <canvas id="weekly-bar-chart"></canvas>
+        </div>
+        <div class="text-xs text-muted" style="margin-top:8px;text-align:center">
+          Dashed line = calorie goal &middot; Red bars = over goal
+        </div>
+      </div>
+
+      <!-- Avg stats -->
+      <div class="card" style="margin-top:12px">
+        <div class="section-title" style="margin-top:0">7-Day Averages</div>
+        <div class="stats-row">
+          <div class="stat-chip">
+            <div class="val" id="insights-avg-cal">—</div>
+            <div class="lbl">kcal/day</div>
+          </div>
+          <div class="stat-chip">
+            <div class="val" id="insights-avg-prot">—</div>
+            <div class="lbl">Protein</div>
+          </div>
+          <div class="stat-chip">
+            <div class="val" id="insights-avg-fat">—</div>
+            <div class="lbl">Fat</div>
+          </div>
+        </div>
+        <div class="text-center mt-12">
+          <div class="text-sm text-muted">Avg surplus / deficit</div>
+          <div id="insights-deficit" style="font-size:20px;font-weight:700;margin-top:4px">—</div>
+        </div>
+      </div>
+
+      <!-- Macro breakdown donut -->
+      <div class="card" style="margin-top:12px">
+        <div class="section-title" style="margin-top:0">Macro Breakdown</div>
+        <div style="position:relative;height:220px">
+          <canvas id="macro-donut-chart"></canvas>
+        </div>
+        <div class="stats-row" style="margin-top:12px">
+          <div class="stat-chip">
+            <div class="val" id="insights-avg-carb" style="color:var(--yellow)">—</div>
+            <div class="lbl">Carbs</div>
+          </div>
+          <div class="stat-chip">
+            <div class="val" style="color:var(--blue)" id="insights-macro-prot-disp">—</div>
+            <div class="lbl">Protein</div>
+          </div>
+          <div class="stat-chip">
+            <div class="val" style="color:var(--red)" id="insights-macro-fat-disp">—</div>
+            <div class="lbl">Fat</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Best / Worst Day -->
+      <div class="card" style="margin-top:12px">
+        <div class="section-title" style="margin-top:0">Week Highlights</div>
+        <div class="insight-callout best">
+          <div class="callout-icon">
+            <svg width="24" height="24"><use href="#icon-trophy"/></svg>
+          </div>
+          <div class="callout-text">
+            <div class="title">Best Day</div>
+            <div class="body" id="insights-best-day">—</div>
+          </div>
+        </div>
+        <div class="insight-callout worst">
+          <div class="callout-icon">
+            <svg width="24" height="24"><use href="#icon-trending-down"/></svg>
+          </div>
+          <div class="callout-text">
+            <div class="title">Most Off-Target Day</div>
+            <div class="body" id="insights-worst-day">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weight trend (shown only when weight data exists) -->
+      <div id="weight-chart-section" class="card hidden" style="margin-top:12px">
+        <div class="section-title" style="margin-top:0">Weight Trend</div>
+        <div class="chart-wrapper">
+          <canvas id="weight-line-chart"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SCREEN: Profile / Settings ── -->
+  <div id="screen-profile" class="screen">
+    <div class="screen-header">
+      <h1>Profile</h1>
+      <div class="subtitle">Your stats &amp; goals</div>
+    </div>
+    <div class="screen-content">
+
+      <!-- TDEE Result -->
+      <div id="tdee-result-wrap" class="tdee-result hidden" style="margin-bottom:16px">
+        <div class="big-num" id="tdee-result-num">—</div>
+        <div class="big-label">Goal Calories / day</div>
+        <div class="bmr-row"><span id="tdee-bmr">BMR: — kcal</span> &nbsp;&middot;&nbsp; <span id="tdee-tdee">TDEE: — kcal</span></div>
+      </div>
+
+      <!-- Personal Info -->
+      <div class="profile-section">
+        <div class="section-label">Personal Info</div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="input-group">
+            <label>Height (cm)</label>
+            <input id="profile-height" type="number" class="input" placeholder="175" />
+          </div>
+          <div class="input-group">
+            <label>Weight</label>
+            <input id="profile-weight" type="number" class="input" placeholder="165" />
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="input-group">
+            <label>Age</label>
+            <input id="profile-age" type="number" class="input" placeholder="25" />
+          </div>
+          <div class="input-group">
+            <label>Sex</label>
+            <select id="profile-sex" class="input">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+        </div>
+        <div class="input-group" style="margin-bottom:12px">
+          <label>Activity Level</label>
+          <select id="profile-activityLevel" class="input">
+            <option value="sedentary">Sedentary</option>
+            <option value="light">Lightly Active</option>
+            <option value="moderate">Moderately Active</option>
+            <option value="active">Very Active</option>
+            <option value="very-active">Extra Active</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="input-group">
+            <label>Goal</label>
+            <select id="profile-goal" class="input">
+              <option value="cut">Cut</option>
+              <option value="maintain">Maintain</option>
+              <option value="bulk">Bulk</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Units</label>
+            <select id="profile-unit" class="input">
+              <option value="lbs">lbs / imperial</option>
+              <option value="kg">kg / metric</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Macro Goals -->
+      <div class="profile-section">
+        <div class="section-label">Nutrition Goals (auto-calculated, editable)</div>
+        <div class="form-row three" style="margin-bottom:12px">
+          <div class="input-group">
+            <label>Cal Goal</label>
+            <input id="profile-goalCalories" type="number" class="input" placeholder="2000" />
+          </div>
+          <div class="input-group">
+            <label>Protein (g)</label>
+            <input id="profile-goalProtein" type="number" class="input" placeholder="150" />
+          </div>
+          <div class="input-group">
+            <label>Carbs (g)</label>
+            <input id="profile-goalCarbs" type="number" class="input" placeholder="200" />
+          </div>
+        </div>
+        <div class="input-group">
+          <label>Fat (g)</label>
+          <input id="profile-goalFat" type="number" class="input" placeholder="65" style="max-width:120px" />
+        </div>
+      </div>
+
+      <button id="btn-save-profile" class="btn btn-primary btn-full" style="margin-bottom:20px">
+        <svg width="18" height="18"><use href="#icon-save"/></svg>
+        Save Profile
+      </button>
+
+      <hr class="divider" />
+
+      <!-- Daily Weight Log -->
+      <div class="profile-section">
+        <div class="section-label">Log Today's Weight</div>
+        <div class="form-row">
+          <div class="input-group" style="flex:1">
+            <label>Weight</label>
+            <input id="log-weight-val" type="number" class="input" placeholder="165.2" step="0.1" />
+          </div>
+          <div class="input-group" style="width:90px">
+            <label>Unit</label>
+            <select id="log-weight-unit" class="input">
+              <option value="lbs">lbs</option>
+              <option value="kg">kg</option>
+            </select>
+          </div>
+        </div>
+        <button id="btn-save-weight" class="btn btn-secondary btn-full" style="margin-top:10px">
+          <svg width="16" height="16"><use href="#icon-scale"/></svg>
+          Log Weight
+        </button>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Export / Import -->
+      <div class="profile-section">
+        <div class="section-label">Data Management</div>
+        <div style="display:flex;gap:10px">
+          <button id="btn-export" class="btn btn-secondary" style="flex:1">
+            <svg width="16" height="16"><use href="#icon-download"/></svg>
+            Export Data
+          </button>
+          <button id="btn-import" class="btn btn-secondary" style="flex:1">
+            <svg width="16" height="16"><use href="#icon-upload"/></svg>
+            Import Data
+          </button>
+        </div>
+        <input id="import-file-input" type="file" accept=".json" class="hidden" />
+        <span class="text-xs text-muted" style="display:block;margin-top:8px">
+          Export creates a <code>nutrilog-backup.json</code> with all your data.
+        </span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Bottom Navigation ── -->
+  <nav id="bottom-nav">
+    <button class="nav-item" data-screen="home" id="nav-home">
+      <svg viewBox="0 0 24 24"><use href="#icon-home"/></svg>
+      Home
+    </button>
+    <button class="nav-item" data-screen="log" id="nav-log">
+      <svg viewBox="0 0 24 24"><use href="#icon-plus-circle"/></svg>
+      Log
+    </button>
+    <button class="nav-item" data-screen="history" id="nav-history">
+      <svg viewBox="0 0 24 24"><use href="#icon-calendar"/></svg>
+      History
+    </button>
+    <button class="nav-item" data-screen="insights" id="nav-insights">
+      <svg viewBox="0 0 24 24"><use href="#icon-activity"/></svg>
+      Insights
+    </button>
+    <button class="nav-item" data-screen="profile" id="nav-profile">
+      <svg viewBox="0 0 24 24"><use href="#icon-user"/></svg>
+      Profile
+    </button>
+  </nav>
+
+  <!-- FAB -->
+  <button id="fab" aria-label="Log a meal">
+    <svg width="26" height="26"><use href="#icon-plus"/></svg>
+  </button>
+
+</div><!-- /main-app -->
+
+<!-- Toast Container -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- Module Scripts -->
+<script type="module" src="/src/app.js"></script>
+
+<script>
+  // Set today's date in header
+  document.getElementById('dash-date').textContent =
+    new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+</script>
+
+</body>
+</html>
