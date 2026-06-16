@@ -13,6 +13,7 @@ import { renderDashboard, renderAnalysisResults, readEditedMeals,
 // ── State ─────────────────────────────────────────────────
 let currentScreen = 'home';
 let pendingMeals  = [];   // meals returned by Gemini, waiting to be confirmed
+let currentMealType = 'auto'; // 'auto' or a specific type
 
 // ── Init ─────────────────────────────────────────────────
 async function init() {
@@ -145,6 +146,15 @@ function attachSetupScreen() {
 
 // ── Log Screen ────────────────────────────────────────────
 function attachLogScreen() {
+  // Meal type toggle
+  document.querySelectorAll('#log-meal-type .toggle-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('#log-meal-type .toggle-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      currentMealType = opt.dataset.type;
+    });
+  });
+
   // Analyze button
   document.getElementById('btn-analyze')?.addEventListener('click', handleAnalyze);
 
@@ -166,10 +176,11 @@ async function handleAnalyze() {
   const btn = document.getElementById('btn-analyze');
   btn.disabled = true;
   document.getElementById('log-spinner').classList.remove('hidden');
+  document.getElementById('log-input-section').classList.add('hidden');
   document.getElementById('log-results-section').classList.add('hidden');
 
   try {
-    pendingMeals = await analyzeMeal(text);
+    pendingMeals = await analyzeMeal(text, currentMealType);
     renderAnalysisResults(pendingMeals, document.getElementById('log-foods-container'));
     document.getElementById('log-input-section').classList.add('hidden');
     document.getElementById('log-results-section').classList.remove('hidden');
@@ -185,7 +196,7 @@ async function handleAnalyze() {
 
 function showManualFallback(rawText) {
   pendingMeals = [{
-    mealType: 'snack',
+    mealType: currentMealType === 'auto' ? 'snack' : currentMealType,
     foods: [{
       name: rawText, quantity: '1 serving',
       calories: 0, protein: 0, carbs: 0, fat: 0,

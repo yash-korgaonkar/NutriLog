@@ -25,13 +25,19 @@ All numeric values must be numbers (not strings). Calories must be reasonable.`;
 /**
  * Analyze a meal description and return an array of meals.
  * @param {string} rawText
+ * @param {string} forcedMealType 'auto' or a specific type like 'breakfast'
  * @returns {Promise<Array>} array of meal objects
  */
-export async function analyzeMeal(rawText) {
+export async function analyzeMeal(rawText, forcedMealType = 'auto') {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('No API key configured. Please add it in Profile → Settings.');
 
   const url = `${BASE}/${MODEL}:generateContent?key=${apiKey}`;
+  
+  let forcedMealText = '';
+  if (forcedMealType !== 'auto') {
+    forcedMealText = `\nCRITICAL: The user has explicitly selected ${forcedMealType}. You MUST set "mealType": "${forcedMealType}" for ALL meals returned, regardless of the description.`;
+  }
 
   const body = {
     system_instruction: {
@@ -45,7 +51,7 @@ export async function analyzeMeal(rawText) {
             text: `Analyze the following description and return a JSON array of meals.
 Each meal has a mealType, and an array of foods.
 Each food must include: name, quantity, calories, protein_g, carbs_g, fat_g,
-fiber_g, sugar_g, saturated_fat_g, sodium_mg, cholesterol_mg, potassium_mg.
+fiber_g, sugar_g, saturated_fat_g, sodium_mg, cholesterol_mg, potassium_mg.${forcedMealText}
 
 Description: "${rawText}"`,
           },
