@@ -38,17 +38,32 @@ export function renderDashboard(log, profile) {
 
   // Calorie ring center text
   const remaining = goal - consumed;
-  document.getElementById('calorie-ring-num').textContent     = consumed;
-  document.getElementById('calorie-ring-remaining').textContent =
-    remaining >= 0 ? `${remaining} kcal remaining` : `${Math.abs(remaining)} kcal over`;
+  const isBulk = profile?.goal === 'bulk';
+  
+  document.getElementById('calorie-ring-num').textContent = consumed;
+  
+  if (isBulk) {
+    document.getElementById('calorie-ring-remaining').textContent =
+      remaining > 0 ? `${remaining} kcal under` : `${Math.abs(remaining)} kcal over (good!)`;
+  } else {
+    document.getElementById('calorie-ring-remaining').textContent =
+      remaining >= 0 ? `${remaining} kcal remaining` : `${Math.abs(remaining)} kcal over`;
+  }
 
-  renderCalorieRing(consumed, goal);
+  renderCalorieRing(consumed, goal, profile?.goal);
 
   // Stats row
   document.getElementById('dash-goal-cal').textContent   = goal;
   document.getElementById('dash-burned-cal').textContent = '—';  // no fitness tracker
   const netEl = document.getElementById('dash-net-cal');
-  if (netEl) { netEl.textContent = consumed; netEl.style.color = consumed > goal ? 'var(--red)' : 'var(--text-primary)'; }
+  if (netEl) { 
+    netEl.textContent = consumed; 
+    if (isBulk) {
+      netEl.style.color = consumed < goal ? 'var(--red)' : 'var(--green)';
+    } else {
+      netEl.style.color = consumed > goal ? 'var(--red)' : 'var(--text-primary)';
+    }
+  }
 
   // Macro bars
   renderMacroBar('protein', pGram, pGoal);
@@ -113,44 +128,62 @@ function renderMealCard(meal) {
 }
 
 // ── Analysis Results (Log screen) ────────────────────────
-export function renderAnalysisResults(foods, container) {
-  container.innerHTML = foods.map((f, i) => `
-    <div class="food-result-card" data-food-idx="${i}">
-      <div class="food-name">${f.name}</div>
-      <div class="food-qty">${f.quantity}</div>
-      <div class="food-macros-grid">
-        <div class="macro-cell cal">
-          <input type="number" class="edit-cal"  value="${f.calories}" min="0" step="1">
-          <div class="lbl">kcal</div>
-        </div>
-        <div class="macro-cell prot">
-          <input type="number" class="edit-prot" value="${f.protein}"  min="0" step="0.1">
-          <div class="lbl">Protein</div>
-        </div>
-        <div class="macro-cell carb">
-          <input type="number" class="edit-carb" value="${f.carbs}"    min="0" step="0.1">
-          <div class="lbl">Carbs</div>
-        </div>
-        <div class="macro-cell fat">
-          <input type="number" class="edit-fat"  value="${f.fat}"      min="0" step="0.1">
-          <div class="lbl">Fat</div>
-        </div>
+export function renderAnalysisResults(meals, container) {
+  let html = '';
+  meals.forEach((meal, mealIdx) => {
+    html += `
+      <div class="meal-group-header" style="margin: 16px 0 8px; font-weight: 700; text-transform: capitalize; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 14px">${meal.mealType}</span>
       </div>
-    </div>`).join('');
+      <div class="meal-group-foods" data-meal-idx="${mealIdx}">
+    `;
+    html += meal.foods.map((f, i) => `
+      <div class="food-result-card" data-food-idx="${i}">
+        <div class="food-name">${f.name}</div>
+        <div class="food-qty">${f.quantity}</div>
+        <div class="food-macros-grid">
+          <div class="macro-cell cal">
+            <input type="number" class="edit-cal"  value="${f.calories}" min="0" step="1">
+            <div class="lbl">kcal</div>
+          </div>
+          <div class="macro-cell prot">
+            <input type="number" class="edit-prot" value="${f.protein}"  min="0" step="0.1">
+            <div class="lbl">Protein</div>
+          </div>
+          <div class="macro-cell carb">
+            <input type="number" class="edit-carb" value="${f.carbs}"    min="0" step="0.1">
+            <div class="lbl">Carbs</div>
+          </div>
+          <div class="macro-cell fat">
+            <input type="number" class="edit-fat"  value="${f.fat}"      min="0" step="0.1">
+            <div class="lbl">Fat</div>
+          </div>
+        </div>
+      </div>`).join('');
+    html += `</div>`;
+  });
+  container.innerHTML = html;
 }
 
 /** Read back edited values from the results container */
-export function readEditedFoods(originalFoods, container) {
-  return originalFoods.map((f, i) => {
-    const card  = container.querySelector(`[data-food-idx="${i}"]`);
-    if (!card) return f;
-    return {
-      ...f,
-      calories: +card.querySelector('.edit-cal').value  || f.calories,
-      protein:  +card.querySelector('.edit-prot').value || f.protein,
-      carbs:    +card.querySelector('.edit-carb').value || f.carbs,
-      fat:      +card.querySelector('.edit-fat').value  || f.fat,
-    };
+export function readEditedMeals(originalMeals, container) {
+  return originalMeals.map((meal, mealIdx) => {
+    const mealGroup = container.querySelector(`[data-meal-idx="${mealIdx}"]`);
+    if (!mealGroup) return meal;
+    
+    const editedFoods = meal.foods.map((f, i) => {
+      const card = mealGroup.querySelector(`[data-food-idx="${i}"]`);
+      if (!card) return f;
+      return {
+        ...f,
+        calories: +card.querySelector('.edit-cal').value  || f.calories,
+        protein:  +card.querySelector('.edit-prot').value || f.protein,
+        carbs:    +card.querySelector('.edit-carb').value || f.carbs,
+        fat:      +card.querySelector('.edit-fat').value  || f.fat,
+      };
+    });
+
+    return { ...meal, foods: editedFoods };
   });
 }
 
@@ -170,7 +203,14 @@ export function renderHistory(logs, profile) {
 
   listEl.innerHTML = logs.map(day => {
     const pct = goalCal > 0 ? Math.round((day.totalCalories / goalCal) * 100) : 0;
-    const badgeClass = pct < 80 ? 'badge-yellow' : pct > 115 ? 'badge-red' : 'badge-green';
+    const isBulk = profile?.goal === 'bulk';
+    let badgeClass = 'badge-green';
+    if (isBulk) {
+      badgeClass = pct < 95 ? 'badge-red' : 'badge-green';
+    } else {
+      badgeClass = pct < 80 ? 'badge-yellow' : pct > 115 ? 'badge-red' : 'badge-green';
+    }
+    
     const meals = (day.meals || []).map(m => renderMealCard(m)).join('');
     const dateObj = new Date(day.date + 'T00:00:00');
     const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -241,7 +281,7 @@ export function renderInsights(logs, profile) {
     return dt.toLocaleDateString('en-US', { weekday: 'short' });
   });
   const calVals = days7.map(d => d.totalCalories || 0);
-  renderWeeklyBar(labels, calVals, goalCal);
+  renderWeeklyBar(labels, calVals, goalCal, profile?.goal);
 
   // Averages
   const activeDays = days7.filter(d => d.totalCalories > 0);
@@ -263,15 +303,25 @@ export function renderInsights(logs, profile) {
   const defEl = document.getElementById('insights-deficit');
   if (defEl) {
     const avg = avgCal - goalCal;
+    const isBulk = profile?.goal === 'bulk';
     defEl.textContent = (avg >= 0 ? '+' : '') + avg + ' kcal avg / day';
-    defEl.style.color = avg > 0 ? 'var(--red)' : 'var(--green)';
+    
+    if (isBulk) {
+      defEl.style.color = avg < 0 ? 'var(--red)' : 'var(--green)';
+    } else {
+      defEl.style.color = avg > 0 ? 'var(--red)' : 'var(--green)';
+    }
   }
 
   // Best / worst
   const sorted = activeDays.slice().sort((a, b) => {
-    const da = Math.abs(a.totalCalories - goalCal);
-    const db = Math.abs(b.totalCalories - goalCal);
-    return da - db;
+    if (profile?.goal === 'bulk') {
+      return a.totalCalories - b.totalCalories; // worst is lowest
+    } else {
+      const da = Math.abs(a.totalCalories - goalCal);
+      const db = Math.abs(b.totalCalories - goalCal);
+      return da - db;
+    }
   });
   if (sorted.length) {
     const best  = sorted[0];

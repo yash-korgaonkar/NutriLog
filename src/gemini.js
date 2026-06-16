@@ -15,14 +15,17 @@ const SYSTEM_INSTRUCTION = `You are a nutrition analysis API.
 You MUST return ONLY valid JSON — no markdown, no explanations, no code fences.
 Make reasonable assumptions for ambiguous quantities (e.g. "a large flatbread pizza" → assume Stonefire Artisan, note in the name).
 Break compound meals into individual food components.
+Return a JSON array of meals. Each meal must include:
+- "mealType" (must be one of: "breakfast", "lunch", "dinner", "snack") — infer this from the text context, or fallback to "snack" if unknown.
+- "foods" (a JSON array of food items)
 For each food item return ALL of these keys exactly:
 name, quantity, calories, protein_g, carbs_g, fat_g, fiber_g, sugar_g, saturated_fat_g, sodium_mg, cholesterol_mg, potassium_mg.
 All numeric values must be numbers (not strings). Calories must be reasonable.`;
 
 /**
- * Analyze a meal description and return an array of food items.
+ * Analyze a meal description and return an array of meals.
  * @param {string} rawText
- * @returns {Promise<Array>} array of food objects
+ * @returns {Promise<Array>} array of meal objects
  */
 export async function analyzeMeal(rawText) {
   const apiKey = getApiKey();
@@ -39,11 +42,12 @@ export async function analyzeMeal(rawText) {
         role: 'user',
         parts: [
           {
-            text: `Analyze the following meal description and return a JSON array of food items.
-Each item must include: name, quantity, calories, protein_g, carbs_g, fat_g,
+            text: `Analyze the following description and return a JSON array of meals.
+Each meal has a mealType, and an array of foods.
+Each food must include: name, quantity, calories, protein_g, carbs_g, fat_g,
 fiber_g, sugar_g, saturated_fat_g, sodium_mg, cholesterol_mg, potassium_mg.
 
-Meal description: "${rawText}"`,
+Description: "${rawText}"`,
           },
         ],
       },
@@ -79,15 +83,18 @@ Meal description: "${rawText}"`,
     throw new Error('Could not parse Gemini response. Please try again or edit manually.');
   }
 
-  // Normalise: accept both array at root OR nested under a key
-  const items = Array.isArray(parsed) ? parsed
-    : Array.isArray(parsed.foods)   ? parsed.foods
+  // Normalise: accept array at root, or nested
+  const mealsData = Array.isArray(parsed) ? parsed
+    : Array.isArray(parsed.meals)   ? parsed.meals
     : Array.isArray(parsed.items)   ? parsed.items
     : null;
 
-  if (!items) throw new Error('Unexpected response shape from Gemini.');
+  if (!mealsData) throw new Error('Unexpected response shape from Gemini.');
 
-  return items.map(normaliseFood);
+  return mealsData.map(m => ({
+    mealType: m.mealType || 'snack',
+    foods: (m.foods || []).map(normaliseFood)
+  }));
 }
 
 /** Normalise field names & types */

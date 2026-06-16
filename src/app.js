@@ -6,14 +6,13 @@ import { getProfile, saveProfile, getLog, getAllLogs, addMeal, deleteMeal,
 import { analyzeMeal, sumFoods } from './gemini.js';
 import { calcBMR, calcTDEE, calcGoalCalories, calcMacros,
          kgToLbs, lbsToKg, inToCm, cmToIn } from './calculator.js';
-import { renderDashboard, renderAnalysisResults, readEditedFoods,
+import { renderDashboard, renderAnalysisResults, readEditedMeals,
          renderHistory, renderInsights, renderProfile,
          renderTDEEResult, showToast, showLoading } from './ui.js';
 
 // ── State ─────────────────────────────────────────────────
 let currentScreen = 'home';
-let pendingFoods  = [];   // foods returned by Gemini, waiting to be confirmed
-let currentMealType = 'breakfast';
+let pendingMeals  = [];   // meals returned by Gemini, waiting to be confirmed
 
 // ── Init ─────────────────────────────────────────────────
 async function init() {
@@ -146,17 +145,6 @@ function attachSetupScreen() {
 
 // ── Log Screen ────────────────────────────────────────────
 function attachLogScreen() {
-  // Meal type toggle
-  document.querySelectorAll('#log-meal-type .toggle-option').forEach(opt => {
-    opt.addEventListener('click', () => {
-      document.querySelectorAll('#log-meal-type .toggle-option').forEach(o => o.classList.remove('active'));
-      opt.classList.add('active');
-      currentMealType = opt.dataset.type;
-    });
-  });
-  // Auto-detect meal type from time
-  autoDetectMealType();
-
   // Analyze button
   document.getElementById('btn-analyze')?.addEventListener('click', handleAnalyze);
 
@@ -164,24 +152,11 @@ function attachLogScreen() {
   document.getElementById('btn-reanalyze')?.addEventListener('click', () => {
     document.getElementById('log-results-section').classList.add('hidden');
     document.getElementById('log-input-section').classList.remove('hidden');
-    pendingFoods = [];
+    pendingMeals = [];
   });
 
   // Confirm & Save
   document.getElementById('btn-save-meal')?.addEventListener('click', handleSaveMeal);
-}
-
-function autoDetectMealType() {
-  const h = new Date().getHours();
-  let type = 'snack';
-  if (h >= 5  && h < 11)  type = 'breakfast';
-  else if (h >= 11 && h < 15) type = 'lunch';
-  else if (h >= 17 && h < 21) type = 'dinner';
-
-  currentMealType = type;
-  document.querySelectorAll('#log-meal-type .toggle-option').forEach(opt => {
-    opt.classList.toggle('active', opt.dataset.type === type);
-  });
 }
 
 async function handleAnalyze() {
@@ -194,8 +169,8 @@ async function handleAnalyze() {
   document.getElementById('log-results-section').classList.add('hidden');
 
   try {
-    pendingFoods = await analyzeMeal(text);
-    renderAnalysisResults(pendingFoods, document.getElementById('log-foods-container'));
+    pendingMeals = await analyzeMeal(text);
+    renderAnalysisResults(pendingMeals, document.getElementById('log-foods-container'));
     document.getElementById('log-input-section').classList.add('hidden');
     document.getElementById('log-results-section').classList.remove('hidden');
   } catch (err) {
@@ -209,45 +184,51 @@ async function handleAnalyze() {
 }
 
 function showManualFallback(rawText) {
-  pendingFoods = [{
-    name: rawText, quantity: '1 serving',
-    calories: 0, protein: 0, carbs: 0, fat: 0,
-    fiber: 0, sugar: 0, saturatedFat: 0, sodium: 0, cholesterol: 0, potassium: 0,
+  pendingMeals = [{
+    mealType: 'snack',
+    foods: [{
+      name: rawText, quantity: '1 serving',
+      calories: 0, protein: 0, carbs: 0, fat: 0,
+      fiber: 0, sugar: 0, saturatedFat: 0, sodium: 0, cholesterol: 0, potassium: 0,
+    }]
   }];
-  renderAnalysisResults(pendingFoods, document.getElementById('log-foods-container'));
+  renderAnalysisResults(pendingMeals, document.getElementById('log-foods-container'));
   document.getElementById('log-input-section').classList.add('hidden');
   document.getElementById('log-results-section').classList.remove('hidden');
   showToast('Gemini unavailable — enter macros manually', 'info');
 }
 
 async function handleSaveMeal() {
-  if (!pendingFoods.length) return;
+  if (!pendingMeals.length) return;
 
   const container = document.getElementById('log-foods-container');
-  const editedFoods = readEditedFoods(pendingFoods, container);
-  const totals = sumFoods(editedFoods);
+  const editedMeals = readEditedMeals(pendingMeals, container);
+  
   const rawText = document.getElementById('log-meal-text').value.trim();
 
-  const meal = {
-    id:         crypto.randomUUID(),
-    mealType:   currentMealType,
-    rawText,
-    foods:      editedFoods,
-    ...totals,
-  };
-
   try {
-    await addMeal(meal);
-    showToast('Meal saved!', 'success');
+    for (const m of editedMeals) {
+      if (!m.foods || !m.foods.length) continue;
+      const totals = sumFoods(m.foods);
+      const mealObj = {
+        id:         crypto.randomUUID(),
+        mealType:   m.mealType,
+        rawText,
+        foods:      m.foods,
+        ...totals,
+      };
+      await addMeal(mealObj);
+    }
+
+    showToast('Meals saved!', 'success');
     // Reset log screen
     document.getElementById('log-meal-text').value = '';
-    pendingFoods = [];
+    pendingMeals = [];
     document.getElementById('log-results-section').classList.add('hidden');
     document.getElementById('log-input-section').classList.remove('hidden');
-    autoDetectMealType();
     navigateTo('home');
   } catch (err) {
-    showToast('Failed to save meal', 'error');
+    showToast('Failed to save meals', 'error');
   }
 }
 

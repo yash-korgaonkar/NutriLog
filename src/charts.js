@@ -23,12 +23,15 @@ let weightLineChart  = null;
 let macroDonutChart  = null;
 
 // ── Calorie Ring (Dashboard) ────────────────────────────
-export function renderCalorieRing(consumed, goal) {
+export function renderCalorieRing(consumed, goal, goalType = 'maintain') {
   const ctx = document.getElementById('calorie-ring')?.getContext('2d');
   if (!ctx) return;
 
   const remaining = Math.max(0, goal - consumed);
   const over      = consumed > goal ? consumed - goal : 0;
+  
+  const isBulk = goalType === 'bulk';
+  const overColor = isBulk ? '#4ade80' : '#f87171';
 
   if (calorieRingChart) calorieRingChart.destroy();
   calorieRingChart = new Chart(ctx, {
@@ -39,7 +42,7 @@ export function renderCalorieRing(consumed, goal) {
           ? [consumed, over]
           : [consumed, remaining],
         backgroundColor: over > 0
-          ? ['#7c6af7', '#f87171']
+          ? ['#7c6af7', overColor]
           : ['#7c6af7', 'rgba(255,255,255,0.05)'],
         borderWidth: 0,
         borderRadius: 4,
@@ -54,9 +57,11 @@ export function renderCalorieRing(consumed, goal) {
 }
 
 // ── Weekly Calorie Bar Chart (Insights) ─────────────────
-export function renderWeeklyBar(labels, values, goalLine) {
+export function renderWeeklyBar(labels, values, goalLine, goalType = 'maintain') {
   const ctx = document.getElementById('weekly-bar-chart')?.getContext('2d');
   if (!ctx) return;
+
+  const isBulk = goalType === 'bulk';
 
   if (weeklyBarChart) weeklyBarChart.destroy();
   weeklyBarChart = new Chart(ctx, {
@@ -67,7 +72,10 @@ export function renderWeeklyBar(labels, values, goalLine) {
         {
           label:           'Calories',
           data:            values,
-          backgroundColor: values.map(v => v > goalLine ? 'rgba(248,113,113,0.7)' : 'rgba(124,106,247,0.7)'),
+          backgroundColor: values.map(v => {
+            if (isBulk) return v < goalLine ? 'rgba(248,113,113,0.7)' : 'rgba(74,222,128,0.7)';
+            return v > goalLine ? 'rgba(248,113,113,0.7)' : 'rgba(124,106,247,0.7)';
+          }),
           borderRadius:    6,
           borderSkipped:   false,
         },
