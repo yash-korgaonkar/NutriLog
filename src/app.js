@@ -18,7 +18,7 @@ let pendingMeals  = [];   // meals returned by Gemini, waiting to be confirmed
 async function init() {
   // Register service worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
   const profile = await getProfile();

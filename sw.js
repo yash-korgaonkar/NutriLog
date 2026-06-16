@@ -5,18 +5,18 @@
 const CACHE_NAME = 'nutrilog-v1';
 
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/styles/main.css',
-  '/src/app.js',
-  '/src/db.js',
-  '/src/gemini.js',
-  '/src/ui.js',
-  '/src/charts.js',
-  '/src/calculator.js',
-  '/manifest.json',
-  '/assets/icon-192.png',
-  '/assets/icon-512.png',
+  './',
+  './index.html',
+  './styles/main.css',
+  './src/app.js',
+  './src/db.js',
+  './src/gemini.js',
+  './src/ui.js',
+  './src/charts.js',
+  './src/calculator.js',
+  './manifest.json',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
   // CDN assets — cached on first fetch
 ];
 
@@ -63,7 +63,7 @@ self.addEventListener('fetch', event => {
     }).catch(() => {
       // Offline fallback — return cached index.html for navigation requests
       if (request.mode === 'navigate') {
-        return caches.match('/index.html');
+        return caches.match('./index.html').then(res => res || caches.match('./'));
       }
     })
   );
