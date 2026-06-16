@@ -2,7 +2,8 @@
   "name": "NutriLog",
   "short_name": "NutriLog",
   "description": "AI-powered nutrition tracker using Gemini 2.5 Flash",
-  "start_url": "/",
+  "start_url": "/NutriLog/",
+  "scope": "/NutriLog/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0f",
@@ -10,13 +11,13 @@
   "categories": ["health", "fitness"],
   "icons": [
     {
-      "src": "/assets/icon-192.png",
+      "src": "/NutriLog/assets/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/assets/icon-512.png",
+      "src": "/NutriLog/assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
