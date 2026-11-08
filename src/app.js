@@ -3,7 +3,7 @@
 // ────────────────────────────────────────────────────────
 import { getProfile, saveProfile, getLog, getAllLogs, addMeal, deleteMeal,
          saveDayWeight, getWeightLog, exportAll, importAll, todayDate } from './db.js';
-import { analyzeMeal, sumFoods } from './gemini.js';
+import { analyzeMeal, sumFoods, getApiKey, setApiKey } from './gemini.js';
 import { calcBMR, calcTDEE, calcGoalCalories, calcMacros,
          kgToLbs, lbsToKg, inToCm, cmToIn } from './calculator.js';
 import { renderDashboard, renderAnalysisResults, readEditedMeals,
@@ -255,11 +255,16 @@ function attachProfileScreen() {
   // Save profile
   document.getElementById('btn-save-profile')?.addEventListener('click', handleSaveProfile);
 
-  // API key toggle
-  document.getElementById('profile-key-toggle')?.addEventListener('click', () => {
-    const inp = document.getElementById('profile-api-key');
-    if (!inp) return;
-    inp.type = inp.type === 'password' ? 'text' : 'password';
+  // API key: load, save on edit, show/hide toggle
+  const keyInput = document.getElementById('profile-api-key');
+  if (keyInput) {
+    keyInput.value = getApiKey();
+    keyInput.addEventListener('change', () => setApiKey(keyInput.value));
+  }
+  document.getElementById('profile-key-toggle')?.addEventListener('click', (e) => {
+    if (!keyInput) return;
+    keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
+    e.currentTarget.textContent = keyInput.type === 'password' ? 'Show' : 'Hide';
   });
 
   // Export

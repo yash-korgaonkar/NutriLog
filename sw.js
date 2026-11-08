@@ -2,7 +2,7 @@
 //  sw.js — NutriLog Service Worker (Cache-first PWA)
 // ────────────────────────────────────────────────────────
 
-const CACHE_NAME = 'nutrilog-v1';
+const CACHE_NAME = 'nutrilog-v2';
 
 const STATIC_ASSETS = [
   './',

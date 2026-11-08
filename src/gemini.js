@@ -4,11 +4,18 @@
 
 const MODEL   = 'gemini-2.5-flash';
 const BASE    = 'https://generativelanguage.googleapis.com/v1beta/models';
-const API_KEY = atob('QVEuQWI4Uk42SjdFYjdMNXBwbjc4cWp5dTJFZ1Uyb3dicVQ2ckR3cHdoYWtWXzg2bWY3TlE=');
+export const API_KEY_STORAGE = 'nutrilog_gemini_key';
 
-function getApiKey() {
-  // Key is baked in — no user entry needed
-  return API_KEY;
+// The key lives only in this browser's storage — never in the source code.
+export function getApiKey() {
+  try { return localStorage.getItem(API_KEY_STORAGE) || ''; } catch { return ''; }
+}
+
+export function setApiKey(key) {
+  try {
+    if (key) localStorage.setItem(API_KEY_STORAGE, key.trim());
+    else localStorage.removeItem(API_KEY_STORAGE);
+  } catch { /* storage unavailable */ }
 }
 
 const SYSTEM_INSTRUCTION = `You are a nutrition analysis API.
@@ -30,7 +37,7 @@ All numeric values must be numbers (not strings). Calories must be reasonable.`;
  */
 export async function analyzeMeal(rawText, forcedMealType = 'auto') {
   const apiKey = getApiKey();
-  if (!apiKey) throw new Error('No API key configured. Please add it in Profile → Settings.');
+  if (!apiKey) throw new Error('No API key configured. Add it in Profile → Gemini API Key.');
 
   const url = `${BASE}/${MODEL}:generateContent?key=${apiKey}`;
   
