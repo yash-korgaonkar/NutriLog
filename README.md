@@ -8,13 +8,13 @@ Calorie apps make you search a database for every ingredient. With NutriLog you 
 
 ## Features
 
-- **Natural-language logging** — describe a meal in plain English; compound meals are split into components and the meal type is inferred
-- **Editable results** — every AI estimate can be corrected before it's saved
-- **Goals from your body stats** — BMR via Mifflin-St Jeor, TDEE from activity level, and calorie/macro targets for cutting, maintaining, or bulking
-- **Dashboard and insights** — calorie ring, macro donut, weekly trends, and averages over time
-- **Weight tracking** — daily weigh-ins with a trend chart
-- **Private by design** — all data stays on your device in IndexedDB; export/import as JSON backup
-- **Works offline** — progressive web app with a service worker; add it to your home screen
+- **Natural-language logging:** describe a meal in plain English; compound meals are split into components and the meal type is inferred
+- **Editable results:** every AI estimate can be corrected before it's saved
+- **Goals from your body stats:** BMR via Mifflin-St Jeor, TDEE from activity level, and calorie/macro targets for cutting, maintaining, or bulking
+- **Dashboard and insights:** calorie ring, macro donut, weekly trends, and averages over time
+- **Weight tracking:** daily weigh-ins with a trend chart
+- **Private by design:** all data stays on your device in IndexedDB; export/import as JSON backup
+- **Works offline:** progressive web app with a service worker; add it to your home screen
 
 ## Stack
 
